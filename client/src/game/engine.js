@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls';
-import { createPlayer } from './player';
+import Player from './player';  // Changed from createPlayer to direct Player import
 import { initWeapons } from './weapons';
 import { initNetwork } from '../network/network';
 
@@ -18,6 +18,7 @@ class GameEngine {
     this.map = null;
     this.debugMode = true; // Add debug flag
     this.materials = new Map();
+    this.keys = {};
   }
 
   async loadShaders() {
@@ -51,6 +52,7 @@ class GameEngine {
   }
 
   async init(container) {
+    window.gameEngine = this;
     console.log('DOM ready:', document.readyState);
     console.log('Container exists:', !!container);
     console.log('Three.js version:', THREE.REVISION);
@@ -136,7 +138,14 @@ class GameEngine {
     this.scene.add(floor);
     
     // Инициализируем игрока
-    this.currentPlayer = createPlayer(this.scene, this.camera);
+    this.currentPlayer = new Player({
+      id: 'local',
+      position: new THREE.Vector3(0, 1.6, 0),
+      rotation: new THREE.Euler(0, 0, 0),
+      controls: this.controls,
+      camera: this.camera,
+      scene: this.scene
+    });
     
     // Инициализируем оружие
     initWeapons(this.scene, this.camera);
@@ -149,6 +158,30 @@ class GameEngine {
     
     // Запускаем игровой цикл
     this.animate();
+
+    container.addEventListener('click', () => {
+      if (!this.isGameActive) return;
+      console.log('Attempting to lock pointer');
+      this.controls.lock();
+    });
+
+    this.controls.addEventListener('lock', () => {
+      console.log('Controls locked');
+    });
+
+    this.controls.addEventListener('unlock', () => {
+      console.log('Controls unlocked');
+    });
+
+    // Setup input handling
+    document.addEventListener('keydown', (event) => {
+      this.keys[event.code] = true;
+      console.log('Key down:', event.code);
+    });
+
+    document.addEventListener('keyup', (event) => {
+      this.keys[event.code] = false;
+    });
   }
 
   updateMap(mapData) {
@@ -212,12 +245,32 @@ class GameEngine {
     this.killCount = 0;
     this.timeRemaining = 600;
     
-    // Запускаем таймер
+    // Create player and bind to camera
+    this.currentPlayer = new Player({
+      id: this.networkManager && this.networkManager.socket ? this.networkManager.socket.id : 'local',
+      position: new THREE.Vector3(0, 1.6, 0),
+      rotation: new THREE.Euler(0, 0, 0),
+      controls: this.controls,
+      camera: this.camera,
+      scene: this.scene
+    });
+    
+    this.camera.position.copy(this.currentPlayer.position);
+    
+    const mainMenu = document.querySelector('.main-menu');
+    if (mainMenu) {
+        mainMenu.style.display = 'none';
+    }
+    
+    this.controls.lock();
+    console.log('Game started, player created:', this.currentPlayer);
+    
+    // Start game timer
     this.gameTimer = setInterval(() => {
-      this.timeRemaining--;
-      if (this.timeRemaining <= 0) {
-        this.endGame();
-      }
+        this.timeRemaining--;
+        if (this.timeRemaining <= 0) {
+            this.endGame();
+        }
     }, 1000);
   }
 
@@ -253,6 +306,19 @@ class GameEngine {
     }
     
     this.renderer.render(this.scene, this.camera);
+  }
+
+  // Add new method for creating players
+  addPlayer(id, position, rotation, isCurrentPlayer = false) {
+    this.players[id] = new Player({
+      id: id,
+      position: position || new THREE.Vector3(0, 1.6, 0),
+      rotation: rotation || new THREE.Euler(0, 0, 0),
+      controls: isCurrentPlayer ? this.controls : null,
+      camera: isCurrentPlayer ? this.camera : null,
+      scene: this.scene
+    });
+    return this.players[id];
   }
 }
 
