@@ -9,7 +9,7 @@ def guess_the_number():
         attempts += 1
         try:
             guess = int(guess)
-            if guess < 1 or guess > 10:
+            if guess < 1 or guess > 50000:
                 print("Please guess a number within the range!")
             elif guess < number_to_guess:
                 print("Too low! Try again.")
@@ -19,7 +19,7 @@ def guess_the_number():
                 print(f"Congratulations! You've guessed the number {number_to_guess} in {attempts} attempts!")
                 break
         except ValueError:
-            print("That's not a valid number! Please enter an integer.")
+            print("That's not a valid number! Go fys.")
 
 if __name__ == '__main__':
     guess_the_number()
