@@ -17,11 +17,44 @@ class GameEngine {
     this.timeRemaining = 600; // 10 minutes in seconds
     this.map = null;
     this.debugMode = true; // Add debug flag
+    this.materials = new Map();
   }
 
-  init() {
-    console.log('Initializing game engine...');
-    
+  async loadShaders() {
+    try {
+      const response = await fetch('/shaders/phong.frag');
+      const fragmentShader = await response.text();
+      
+      const material = new THREE.ShaderMaterial({
+        uniforms: {
+          diffuse: { value: new THREE.Color(0x808080) },
+          emissive: { value: new THREE.Color(0x000000) },
+          specular: { value: new THREE.Color(0x111111) },
+          shininess: { value: 30 },
+          opacity: { value: 1.0 },
+          ambientLightColor: { value: new THREE.Color(0x404040) },
+          directionalLightColor: { value: new THREE.Color(0xffffff) },
+          directionalLightDirection: { value: new THREE.Vector3(0.5, 1, 0.5) }
+        },
+        vertexShader: THREE.ShaderLib.phong.vertexShader,
+        fragmentShader: fragmentShader,
+        lights: true
+      });
+
+      this.materials.set('phong', material);
+      console.log('Shaders loaded successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to load shaders:', error);
+      return false;
+    }
+  }
+
+  async init(container) {
+    console.log('DOM ready:', document.readyState);
+    console.log('Container exists:', !!container);
+    console.log('Three.js version:', THREE.REVISION);
+
     // Scene setup
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87ceeb);
@@ -56,7 +89,11 @@ class GameEngine {
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    document.body.appendChild(this.renderer.domElement);
+    
+    container.appendChild(this.renderer.domElement);
+    console.log('Canvas added to DOM:', container.contains(this.renderer.domElement));
+
+    await this.loadShaders();
     
     // Debug objects
     if (this.debugMode) {
@@ -206,6 +243,7 @@ class GameEngine {
     }
     
     if (this.debugMode) {
+      console.log('Animation frame:', performance.now().toFixed(0));
       // Log any rendering issues
       const gl = this.renderer.getContext();
       const error = gl.getError();
