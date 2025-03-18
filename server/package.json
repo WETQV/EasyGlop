@@ -4,15 +4,15 @@
     "description": "Server for EasyGlop 3D multiplayer shooter",
     "main": "src/index.js",
     "scripts": {
-      "start": "node src/index.js",
-      "dev": "nodemon src/index.js"
+        "start": "node src/index.js",
+        "dev": "nodemon src/index.js"
     },
     "dependencies": {
-      "express": "^4.18.2",
-      "socket.io": "^4.7.2",
-      "path": "^0.12.7"
+        "express": "^4.21.2",
+        "path": "^0.12.7",
+        "socket.io": "^4.8.1"
     },
     "devDependencies": {
-      "nodemon": "^3.0.1"
+        "nodemon": "^3.1.9"
     }
-  }
+}

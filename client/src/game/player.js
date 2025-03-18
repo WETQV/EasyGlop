@@ -1,24 +1,26 @@
 import * as THREE from 'three';
+import networkManager from '../network/network';
 
-export class Player {
-  constructor(id, scene, camera, isCurrentPlayer = false) {
-    this.id = id;
+class Player {
+  constructor(scene, camera, controls, isCurrentPlayer = false) {
     this.scene = scene;
     this.camera = camera;
+    this.controls = controls;
     this.isCurrentPlayer = isCurrentPlayer;
     
-    this.moveSpeed = 0.15;
-    this.jumpForce = 0.5;
-    this.gravity = 0.01;
+    this.position = new THREE.Vector3(0, 1, 0);
+    this.velocity = new THREE.Vector3();
+    this.direction = new THREE.Vector3();
+    
+    this.moveSpeed = 0.1;
     this.health = 100;
-    this.velocity = new THREE.Vector3(0, 0, 0);
-    this.onGround = true;
+    this.score = 0;
     
     this.moveForward = false;
     this.moveBackward = false;
     this.moveLeft = false;
     this.moveRight = false;
-    this.jump = false;
+    this.canJump = false;
     
     this.createPlayerModel();
     
@@ -28,153 +30,206 @@ export class Player {
   }
   
   createPlayerModel() {
-    // Создаем модель игрока (куб)
-    const geometry = new THREE.BoxGeometry(1, 2, 1);
-    const material = new THREE.MeshStandardMaterial({ 
-      color: this.isCurrentPlayer ? 0x00ff00 : 0xff0000 
-    });
-    
-    this.mesh = new THREE.Mesh(geometry, material);
-    this.mesh.position.y = 1; // Поднимаем над полом
-    
-    if (!this.isCurrentPlayer) {
-      this.scene.add(this.mesh);
+    if (this.isCurrentPlayer) {
+      // Для текущего игрока не создаем модель, так как используем камеру от первого лица
+      return;
     }
+    
+    // Создаем модель игрока
+    const geometry = new THREE.BoxGeometry(1, 2, 1);
+    const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
+    this.mesh = new THREE.Mesh(geometry, material);
+    this.mesh.position.copy(this.position);
+    
+    this.scene.add(this.mesh);
   }
   
   setupControls() {
-    // Настраиваем управление клавиатурой
-    document.addEventListener('keydown', (event) => {
+    // Настройка управления с клавиатуры
+    const onKeyDown = (event) => {
       switch (event.code) {
         case 'KeyW':
           this.moveForward = true;
           break;
-        case 'KeyS':
-          this.moveBackward = true;
-          break;
         case 'KeyA':
           this.moveLeft = true;
+          break;
+        case 'KeyS':
+          this.moveBackward = true;
           break;
         case 'KeyD':
           this.moveRight = true;
           break;
         case 'Space':
-          if (this.onGround) {
-            this.velocity.y = this.jumpForce;
-            this.onGround = false;
+          if (this.canJump) {
+            this.velocity.y += 10;
+            this.canJump = false;
           }
           break;
       }
-    });
+    };
     
-    document.addEventListener('keyup', (event) => {
+    const onKeyUp = (event) => {
       switch (event.code) {
         case 'KeyW':
           this.moveForward = false;
           break;
-        case 'KeyS':
-          this.moveBackward = false;
-          break;
         case 'KeyA':
           this.moveLeft = false;
+          break;
+        case 'KeyS':
+          this.moveBackward = false;
           break;
         case 'KeyD':
           this.moveRight = false;
           break;
+      }
+    };
+    
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    
+    // Настройка стрельбы
+    document.addEventListener('mousedown', (event) => {
+      if (event.button === 0) { // ЛКМ
+        this.shoot();
       }
     });
   }
   
   update() {
     if (this.isCurrentPlayer) {
-      // Обновляем позицию текущего игрока на основе ввода
-      const direction = new THREE.Vector3();
+      // Обновляем движение текущего игрока
+      this.updateMovement();
       
-      // Получаем направление движения из камеры
-      const cameraDirection = new THREE.Vector3();
-      this.camera.getWorldDirection(cameraDirection);
-      
-      // Нормализуем для горизонтального движения
-      cameraDirection.y = 0;
-      cameraDirection.normalize();
-      
-      // Вычисляем вектор движения
-      if (this.moveForward) {
-        direction.add(cameraDirection);
-      }
-      if (this.moveBackward) {
-        direction.sub(cameraDirection);
-      }
-      
-      // Боковое движение (перпендикулярно направлению камеры)
-      const rightVector = new THREE.Vector3();
-      rightVector.crossVectors(this.camera.up, cameraDirection).normalize();
-      
-      if (this.moveLeft) {
-        direction.sub(rightVector);
-      }
-      if (this.moveRight) {
-        direction.add(rightVector);
-      }
-      
-      // Нормализуем вектор движения для постоянной скорости
-      if (direction.length() > 0) {
-        direction.normalize();
-        
-        // Применяем скорость движения
-        this.camera.position.x += direction.x * this.moveSpeed;
-        this.camera.position.z += direction.z * this.moveSpeed;
-      }
-      
-      // Применяем гравитацию
-      this.velocity.y -= this.gravity;
-      this.camera.position.y += this.velocity.y;
-      
-      // Проверяем столкновение с полом
-      if (this.camera.position.y < 1.6) { // Высота глаз
-        this.camera.position.y = 1.6;
-        this.velocity.y = 0;
-        this.onGround = true;
-      }
-    } else {
-      // Обновляем позицию других игроков на основе данных с сервера
-      // Это будет реализовано в сетевом коде
+      // Отправляем позицию на сервер
+      networkManager.sendPlayerMove({
+        x: this.position.x,
+        y: this.position.y,
+        z: this.position.z
+      });
+    } else if (this.mesh) {
+      // Обновляем позицию модели другого игрока
+      this.mesh.position.copy(this.position);
     }
   }
   
-  takeDamage(amount) {
-    this.health -= amount;
-    if (this.health <= 0) {
-      this.die();
+  updateMovement() {
+    // Получаем направление движения из камеры
+    const direction = new THREE.Vector3();
+    this.controls.getDirection(direction);
+    direction.y = 0;
+    direction.normalize();
+    
+    // Вектор движения
+    const moveVector = new THREE.Vector3();
+    
+    if (this.moveForward) {
+      moveVector.add(direction);
     }
+    if (this.moveBackward) {
+      moveVector.sub(direction);
+    }
+    
+    // Боковое движение (перпендикулярно направлению)
+    const sideDirection = new THREE.Vector3(-direction.z, 0, direction.x);
+    
+    if (this.moveRight) {
+      moveVector.add(sideDirection);
+    }
+    if (this.moveLeft) {
+      moveVector.sub(sideDirection);
+    }
+    
+    // Нормализуем вектор движения, если он не нулевой
+    if (moveVector.length() > 0) {
+      moveVector.normalize();
+      moveVector.multiplyScalar(this.moveSpeed);
+    }
+    
+    // Применяем гравитацию
+    this.velocity.y -= 0.01;
+    
+    // Обновляем позицию
+    this.position.add(moveVector);
+    this.position.y += this.velocity.y;
+    
+    // Проверяем столкновение с землей
+    if (this.position.y < 1) {
+      this.position.y = 1;
+      this.velocity.y = 0;
+      this.canJump = true;
+    }
+    
+    // Обновляем позицию камеры
+    this.camera.position.copy(this.position);
   }
   
-  die() {
-    // Логика смерти игрока
-    if (this.isCurrentPlayer) {
-      // Респаун текущего игрока
-      this.health = 100;
-      this.camera.position.set(0, 1.6, 0);
-    } else {
-      // Обработка смерти другого игрока
-    }
-  }
-  
-  getPosition() {
-    if (this.isCurrentPlayer) {
-      return this.camera.position;
-    } else {
-      return this.mesh.position;
-    }
+  shoot() {
+    // Получаем направление выстрела из камеры
+    const direction = new THREE.Vector3();
+    this.controls.getDirection(direction);
+    
+    // Отправляем информацию о выстреле на сервер
+    networkManager.sendPlayerShoot(
+      {
+        x: this.position.x,
+        y: this.position.y,
+        z: this.position.z
+      },
+      {
+        x: direction.x,
+        y: direction.y,
+        z: direction.z
+      }
+    );
   }
   
   setPosition(position) {
-    if (!this.isCurrentPlayer) {
-      this.mesh.position.copy(position);
+    this.position.set(position.x, position.y, position.z);
+    
+    if (this.mesh) {
+      this.mesh.position.copy(this.position);
     }
+  }
+  
+  hit() {
+    // Визуальный эффект попадания
+    if (this.isCurrentPlayer) {
+      // Эффект красного экрана для текущего игрока
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 0, 0, 0.3);
+        pointer-events: none;
+        z-index: 1000;
+      `;
+      
+      document.body.appendChild(overlay);
+      
+      setTimeout(() => {
+        document.body.removeChild(overlay);
+      }, 300);
+    } else if (this.mesh) {
+      // Эффект для других игроков
+      const originalColor = this.mesh.material.color.getHex();
+      this.mesh.material.color.set(0xff0000);
+      
+      setTimeout(() => {
+        this.mesh.material.color.set(originalColor);
+      }, 300);
+    }
+  }
+  
+  updateScore(score) {
+    this.score = score;
   }
 }
 
-export function createPlayer(scene, camera) {
-  return new Player('local', scene, camera, true);
+export function createPlayer(scene, camera, controls, isCurrentPlayer = false) {
+  return new Player(scene, camera, controls, isCurrentPlayer);
 }

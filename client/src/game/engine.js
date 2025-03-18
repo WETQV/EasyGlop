@@ -15,35 +15,74 @@ class GameEngine {
     this.isGameActive = false;
     this.killCount = 0;
     this.timeRemaining = 600; // 10 minutes in seconds
+    this.map = null;
+    this.debugMode = true; // Add debug flag
   }
 
   init() {
-    // Создаем сцену
+    console.log('Initializing game engine...');
+    
+    // Scene setup
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87ceeb);
     
-    // Создаем камеру
+    // Camera setup
     this.camera = new THREE.PerspectiveCamera(
       75, 
       window.innerWidth / window.innerHeight, 
       0.1, 
       1000
     );
-    this.camera.position.y = 1.6; // Высота глаз
+    this.camera.position.set(0, 5, 10);
+    this.camera.lookAt(0, 0, 0);
     
-    // Создаем рендерер
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    document.body.appendChild(this.renderer.domElement);
-    
-    // Добавляем освещение
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    // Enhanced lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     this.scene.add(ambientLight);
     
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(1, 1, 1);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(10, 20, 10);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
     this.scene.add(directionalLight);
+    
+    // Renderer setup
+    this.renderer = new THREE.WebGLRenderer({ 
+      antialias: true,
+      alpha: false
+    });
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(this.renderer.domElement);
+    
+    // Debug objects
+    if (this.debugMode) {
+      // Add reference cube
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+      const cube = new THREE.Mesh(geometry, material);
+      cube.position.set(0, 0.5, 0);
+      cube.castShadow = true;
+      cube.receiveShadow = true;
+      this.scene.add(cube);
+      
+      // Add grid helper
+      const gridHelper = new THREE.GridHelper(10, 10);
+      this.scene.add(gridHelper);
+      
+      // Add axes helper
+      const axesHelper = new THREE.AxesHelper(5);
+      this.scene.add(axesHelper);
+      
+      console.log('Debug scene:', {
+        scene: this.scene,
+        camera: this.camera,
+        renderer: this.renderer
+      });
+    }
     
     // Создаем контроллер для управления камерой
     this.controls = new PointerLockControls(this.camera, document.body);
@@ -73,6 +112,55 @@ class GameEngine {
     
     // Запускаем игровой цикл
     this.animate();
+  }
+
+  updateMap(mapData) {
+    console.log('Updating map:', mapData);
+    
+    if (this.map) {
+        this.scene.remove(this.map);
+    }
+    
+    this.map = new THREE.Group();
+    
+    const floorGeometry = new THREE.PlaneGeometry(mapData.size, mapData.size);
+    const floorMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x888888,
+        roughness: 0.8 
+    });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = 0;
+    floor.receiveShadow = true;
+    this.map.add(floor);
+    
+    if (mapData.obstacles) {
+        for (const obstacle of mapData.obstacles) {
+            const geometry = new THREE.BoxGeometry(
+                obstacle.size.width,
+                obstacle.size.height,
+                obstacle.size.depth
+            );
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0x777777,
+                roughness: 0.7 
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            
+            mesh.position.set(
+                obstacle.position.x,
+                obstacle.position.y + obstacle.size.height / 2,
+                obstacle.position.z
+            );
+            
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            
+            this.map.add(mesh);
+        }
+    }
+    
+    this.scene.add(this.map);
   }
 
   onWindowResize() {
@@ -108,13 +196,22 @@ class GameEngine {
     requestAnimationFrame(this.animate.bind(this));
     
     if (this.isGameActive) {
-      // Обновляем логику игры
-      this.currentPlayer.update();
+      if (this.currentPlayer) {
+        this.currentPlayer.update();
+      }
       
-      // Обновляем позиции других игроков
       Object.values(this.players).forEach(player => {
-        player.update();
+        if (player.update) player.update();
       });
+    }
+    
+    if (this.debugMode) {
+      // Log any rendering issues
+      const gl = this.renderer.getContext();
+      const error = gl.getError();
+      if (error !== gl.NO_ERROR) {
+        console.error('WebGL Error:', error);
+      }
     }
     
     this.renderer.render(this.scene, this.camera);
