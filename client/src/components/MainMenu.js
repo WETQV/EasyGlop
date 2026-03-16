@@ -1,295 +1,160 @@
+import { GAME_CONFIG, isPoopModeEnabled } from '../config/gameConfig';
+
 export class MainMenu {
-    constructor(gameEngine) {
-      this.gameEngine = gameEngine;
-      this.createMenuElements();
-    }
-    
-    createMenuElements() {
-      // Создаем контейнер для меню
-      this.menuContainer = document.createElement('div');
-      this.menuContainer.id = 'main-menu';
-      this.menuContainer.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        background-color: rgba(0, 0, 0, 0.8);
-        color: white;
-        font-family: Arial, sans-serif;
-        z-index: 1000;
-      `;
-      
-      // Заголовок
-      const title = document.createElement('h1');
-      title.textContent = 'EasyGlop';
-      title.style.cssText = `
-        font-size: 4rem;
-        margin-bottom: 2rem;
-        color: #ff4500;
-        text-shadow: 0 0 10px rgba(255, 69, 0, 0.7);
-      `;
-      
-      // Кнопка "Играть"
-      const playButton = document.createElement('button');
-      playButton.textContent = 'Играть';
-      playButton.style.cssText = this.getButtonStyle();
-      playButton.addEventListener('click', () => this.startGame());
-      
-      // Кнопка "Настройки"
-      const settingsButton = document.createElement('button');
-      settingsButton.textContent = 'Настройки';
-      settingsButton.style.cssText = this.getButtonStyle();
-      settingsButton.addEventListener('click', () => this.showSettings());
-      
-      // Кнопка "Выход"
-      const exitButton = document.createElement('button');
-      exitButton.textContent = 'Выход';
-      exitButton.style.cssText = this.getButtonStyle();
-      exitButton.addEventListener('click', () => this.exitGame());
-      
-      // Добавляем элементы в контейнер
-      this.menuContainer.appendChild(title);
-      this.menuContainer.appendChild(playButton);
-      this.menuContainer.appendChild(settingsButton);
-      this.menuContainer.appendChild(exitButton);
-      
-      // Добавляем меню в документ
-      document.body.appendChild(this.menuContainer);
-      
-      // Создаем экран настроек (скрытый по умолчанию)
-      this.createSettingsScreen();
-      
-      // Создаем экран окончания игры (скрытый по умолчанию)
-      this.createGameOverScreen();
-    }
-    
-    getButtonStyle() {
-      return `
-        background-color: #ff4500;
-        color: white;
-        border: none;
-        padding: 1rem 2rem;
-        margin: 0.5rem;
-        font-size: 1.5rem;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-        width: 200px;
-        
-        &:hover {
-          background-color: #ff6a33;
-        }
-      `;
-    }
-    
-    createSettingsScreen() {
-      this.settingsContainer = document.createElement('div');
-      this.settingsContainer.id = 'settings-menu';
-      this.settingsContainer.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: none;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        background-color: rgba(0, 0, 0, 0.8);
-        color: white;
-        font-family: Arial, sans-serif;
-        z-index: 1000;
-      `;
-      
-      // Заголовок
-      const title = document.createElement('h2');
-      title.textContent = 'Настройки';
-      title.style.cssText = `
-        font-size: 2.5rem;
-        margin-bottom: 2rem;
-        color: #ff4500;
-      `;
-      
-      // Настройка чувствительности мыши
-      const sensitivityContainer = document.createElement('div');
-      sensitivityContainer.style.cssText = `
-        display: flex;
-        align-items: center;
-        margin-bottom: 1rem;
-        width: 300px;
-      `;
-      
-      const sensitivityLabel = document.createElement('label');
-      sensitivityLabel.textContent = 'Чувствительность мыши:';
-      sensitivityLabel.style.cssText = `
-        flex: 1;
-        margin-right: 1rem;
-      `;
-      
-      const sensitivitySlider = document.createElement('input');
-      sensitivitySlider.type = 'range';
-      sensitivitySlider.min = '1';
-      sensitivitySlider.max = '10';
-      sensitivitySlider.value = '5';
-      sensitivitySlider.style.cssText = `
-        flex: 1;
-      `;
-      
-      sensitivityContainer.appendChild(sensitivityLabel);
-      sensitivityContainer.appendChild(sensitivitySlider);
-      
-      // Настройка громкости
-      const volumeContainer = document.createElement('div');
-      volumeContainer.style.cssText = `
-        display: flex;
-        align-items: center;
-        margin-bottom: 1rem;
-        width: 300px;
-      `;
-      
-      const volumeLabel = document.createElement('label');
-      volumeLabel.textContent = 'Громкость:';
-      volumeLabel.style.cssText = `
-        flex: 1;
-        margin-right: 1rem;
-      `;
-      
-      const volumeSlider = document.createElement('input');
-      volumeSlider.type = 'range';
-      volumeSlider.min = '0';
-      volumeSlider.max = '100';
-      volumeSlider.value = '50';
-      volumeSlider.style.cssText = `
-        flex: 1;
-      `;
-      
-      volumeContainer.appendChild(volumeLabel);
-      volumeContainer.appendChild(volumeSlider);
-      
-      // Кнопка "Назад"
-      const backButton = document.createElement('button');
-      backButton.textContent = 'Назад';
-      backButton.style.cssText = this.getButtonStyle();
-      backButton.addEventListener('click', () => this.hideSettings());
-      
-      // Добавляем элементы в контейнер
-      this.settingsContainer.appendChild(title);
-      this.settingsContainer.appendChild(sensitivityContainer);
-      this.settingsContainer.appendChild(volumeContainer);
-      this.settingsContainer.appendChild(backButton);
-      
-      // Добавляем настройки в документ
-      document.body.appendChild(this.settingsContainer);
-    }
-    
-    createGameOverScreen() {
-      this.gameOverContainer = document.createElement('div');
-      this.gameOverContainer.id = 'game-over';
-      this.gameOverContainer.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: none;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        background-color: rgba(0, 0, 0, 0.8);
-        color: white;
-        font-family: Arial, sans-serif;
-        z-index: 1000;
-      `;
-      
-      // Заголовок
-      const title = document.createElement('h2');
-      title.textContent = 'Игра окончена';
-      title.style.cssText = `
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        color: #ff4500;
-      `;
-      
-      // Результат
-      this.resultText = document.createElement('p');
-      this.resultText.textContent = 'Ваш счет: 0';
-      this.resultText.style.cssText = `
-        font-size: 1.5rem;
-        margin-bottom: 2rem;
-      `;
-      
-      // Кнопка "Играть снова"
-      const playAgainButton = document.createElement('button');
-      playAgainButton.textContent = 'Играть снова';
-      playAgainButton.style.cssText = this.getButtonStyle();
-      playAgainButton.addEventListener('click', () => this.startGame());
-      
-      // Кнопка "Главное меню"
-      const mainMenuButton = document.createElement('button');
-      mainMenuButton.textContent = 'Главное меню';
-      mainMenuButton.style.cssText = this.getButtonStyle();
-      mainMenuButton.addEventListener('click', () => this.showMainMenu());
-      
-      // Добавляем элементы в контейнер
-      this.gameOverContainer.appendChild(title);
-      this.gameOverContainer.appendChild(this.resultText);
-      this.gameOverContainer.appendChild(playAgainButton);
-      this.gameOverContainer.appendChild(mainMenuButton);
-      
-      // Добавляем экран окончания игры в документ
-      document.body.appendChild(this.gameOverContainer);
-    }
-    
-    startGame() {
-      this.menuContainer.style.display = 'none';
-      this.settingsContainer.style.display = 'none';
-      this.gameOverContainer.style.display = 'none';
-      
-      // Запускаем игру
-      if (this.gameEngine) {
-        this.gameEngine.startGame();
-      }
-    }
-    
-    showSettings() {
-      this.menuContainer.style.display = 'none';
-      this.settingsContainer.style.display = 'flex';
-    }
-    
-    hideSettings() {
-      this.settingsContainer.style.display = 'none';
-      this.menuContainer.style.display = 'flex';
-    }
-    
-    showMainMenu() {
-      this.gameOverContainer.style.display = 'none';
-      this.settingsContainer.style.display = 'none';
-      this.menuContainer.style.display = 'flex';
-      
-      // Останавливаем игру, если она запущена
-      if (this.gameEngine && this.gameEngine.isGameActive) {
-        this.gameEngine.endGame();
-      }
-    }
-    
-    exitGame() {
-      // В браузере мы не можем полностью закрыть игру,
-      // поэтому просто показываем подтверждение
-      if (confirm('Вы действительно хотите выйти из игры?')) {
-        window.close(); // Это может не сработать в некоторых браузерах
-      }
-    }
-    
-    updateResult(score) {
-      this.resultText.textContent = `Ваш счет: ${score}`;
-    }
+  constructor(root, modalRoot, gameEngine) {
+    this.root = root;
+    this.modalRoot = modalRoot;
+    this.gameEngine = gameEngine;
+    this.render();
   }
-  
-  export default function createMainMenu(gameEngine) {
-    return new MainMenu(gameEngine);
+
+  render() {
+    const controlsMarkup = GAME_CONFIG.uiCopy.controls
+      .map((line) => `<li class="menu-rule">${line}</li>`)
+      .join('');
+
+    this.root.innerHTML = `
+      <section id="main-menu" class="main-menu ${isPoopModeEnabled() ? 'poop-mode' : ''}">
+        <div class="menu-noise menu-noise--left">LOUD</div>
+        <div class="menu-noise menu-noise--right">CUT</div>
+        <div class="menu-card">
+          <p class="menu-kicker">glitch arena game show</p>
+          <h1 class="menu-title">${GAME_CONFIG.uiCopy.title}</h1>
+          <p class="menu-copy">${GAME_CONFIG.uiCopy.strapline}</p>
+
+          <div class="menu-brief">
+            <div>
+              <div class="hud-label">Что это за игра?</div>
+              <p>${GAME_CONFIG.uiCopy.fantasy}</p>
+            </div>
+            <div>
+              <div class="hud-label">Как побеждать?</div>
+              <p>${GAME_CONFIG.uiCopy.winCondition}</p>
+            </div>
+          </div>
+
+          <div class="menu-actions">
+            <button id="play-button" class="menu-button menu-button--primary">${GAME_CONFIG.uiCopy.start}</button>
+            <button id="how-to-button" class="menu-button">${GAME_CONFIG.uiCopy.howToPlay}</button>
+            <button id="settings-button" class="menu-button">${GAME_CONFIG.uiCopy.settings}</button>
+          </div>
+
+          <p class="menu-footnote">${GAME_CONFIG.uiCopy.mobileWarning}</p>
+        </div>
+      </section>
+    `;
+
+    this.modalRoot.innerHTML = `
+      <section id="how-to-modal" class="settings-modal" hidden>
+        <div class="settings-card">
+          <h2>${GAME_CONFIG.uiCopy.howToPlay}</h2>
+          <div class="menu-brief">
+            <div>
+              <div class="hud-label">Философия матча</div>
+              <p>${GAME_CONFIG.uiCopy.objectiveText}</p>
+            </div>
+            <div>
+              <div class="hud-label">Контролы</div>
+              <ul class="menu-rules">${controlsMarkup}</ul>
+            </div>
+          </div>
+          <div class="menu-actions">
+            <button id="close-how-to" class="menu-button menu-button--primary">${GAME_CONFIG.uiCopy.close}</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="settings-modal" class="settings-modal" hidden>
+        <div class="settings-card">
+          <h2>${GAME_CONFIG.uiCopy.settings}</h2>
+          <label class="settings-row">
+            <span>Режим оформления</span>
+            <span class="settings-pill">${GAME_CONFIG.themeMode}</span>
+          </label>
+          <label class="settings-row">
+            <span>Socket target</span>
+            <span class="settings-pill">${GAME_CONFIG.socketUrl}</span>
+          </label>
+          <label class="settings-row">
+            <span>Философия проекта</span>
+            <span class="settings-pill">arcade chaos</span>
+          </label>
+          <div class="menu-actions">
+            <button id="close-settings" class="menu-button menu-button--primary">${GAME_CONFIG.uiCopy.close}</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="game-over-screen" class="game-over-screen" hidden>
+        <div class="game-over-card">
+          <p class="menu-kicker">match recap</p>
+          <h2 id="game-over-title">${GAME_CONFIG.uiCopy.endTitle}</h2>
+          <p id="game-over-copy" class="game-over-copy">Арена моргнула, но мы держимся.</p>
+          <div class="menu-actions">
+            <button id="play-again" class="menu-button menu-button--primary">${GAME_CONFIG.uiCopy.restart}</button>
+            <button id="back-to-menu" class="menu-button">${GAME_CONFIG.uiCopy.backToMenu}</button>
+          </div>
+        </div>
+      </section>
+    `;
+
+    this.menuNode = this.root.querySelector('#main-menu');
+    this.howToNode = this.modalRoot.querySelector('#how-to-modal');
+    this.settingsNode = this.modalRoot.querySelector('#settings-modal');
+    this.gameOverNode = this.modalRoot.querySelector('#game-over-screen');
+    this.gameOverCopyNode = this.modalRoot.querySelector('#game-over-copy');
+
+    this.root.querySelector('#play-button').addEventListener('click', () => this.gameEngine.startGame());
+    this.root.querySelector('#how-to-button').addEventListener('click', () => this.showHowTo());
+    this.root.querySelector('#settings-button').addEventListener('click', () => this.showSettings());
+    this.modalRoot.querySelector('#close-how-to').addEventListener('click', () => this.hideHowTo());
+    this.modalRoot.querySelector('#close-settings').addEventListener('click', () => this.hideSettings());
+    this.modalRoot.querySelector('#play-again').addEventListener('click', () => this.gameEngine.restartGame());
+    this.modalRoot.querySelector('#back-to-menu').addEventListener('click', () => this.showMainMenu());
   }
+
+  showMainMenu() {
+    this.gameOverNode.hidden = true;
+    this.settingsNode.hidden = true;
+    this.howToNode.hidden = true;
+    this.menuNode.hidden = false;
+    this.gameEngine.ui?.hud?.hideFlash();
+    this.gameEngine.stopGame({ showResults: false });
+  }
+
+  hideMainMenu() {
+    this.menuNode.hidden = true;
+  }
+
+  showHowTo() {
+    this.howToNode.hidden = false;
+  }
+
+  hideHowTo() {
+    this.howToNode.hidden = true;
+  }
+
+  showSettings() {
+    this.settingsNode.hidden = false;
+  }
+
+  hideSettings() {
+    this.settingsNode.hidden = true;
+  }
+
+  showGameOver(resultText) {
+    this.menuNode.hidden = true;
+    this.settingsNode.hidden = true;
+    this.howToNode.hidden = true;
+    this.gameOverCopyNode.textContent = resultText;
+    this.gameOverNode.hidden = false;
+  }
+
+  hideGameOver() {
+    this.gameOverNode.hidden = true;
+  }
+}
+
+export default function createMainMenu(root, modalRoot, gameEngine) {
+  return new MainMenu(root, modalRoot, gameEngine);
+}

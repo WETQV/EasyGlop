@@ -1,30 +1,16 @@
 import './styles/main.css';
 import gameEngine from './game/engine';
-import createMainMenu from './components/MainMenu';
+import createUi from './components/createUi';
 
-// Инициализация игры
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM fully loaded');
+document.addEventListener('DOMContentLoaded', async () => {
   const container = document.getElementById('game-container');
-  
-  if (!container) {
-    console.error('Game container not found!');
+  const uiRoot = document.getElementById('ui-root');
+
+  if (!container || !uiRoot) {
+    console.error('Required app roots are missing.');
     return;
   }
-  
-  // Создаем главное меню
-  const mainMenu = createMainMenu(gameEngine);
-  
-  // Инициализируем игровой движок
-  console.log('Initializing game engine...');
-  gameEngine.init(container);
-  
-  // Обработка нажатия клавиши ESC для показа/скрытия меню
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      if (gameEngine.isGameActive) {
-        mainMenu.showMainMenu();
-      }
-    }
-  });
+
+  const ui = createUi(uiRoot, gameEngine);
+  await gameEngine.init(container, ui);
 });

@@ -6,7 +6,8 @@ module.exports = {
   entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'bundle.js'
+    filename: 'bundle.js',
+    clean: true
   },
   module: {
     rules: [
@@ -25,6 +26,10 @@ module.exports = {
         use: ['style-loader', 'css-loader']
       },
       {
+        test: /\.(frag|vert)$/,
+        type: 'asset/source'
+      },
+      {
         test: /\.(png|svg|jpg|gif|mp3|wav)$/,
         use: ['file-loader']
       }
@@ -36,6 +41,7 @@ module.exports = {
     })
   ],
   devServer: {
+    host: '127.0.0.1',
     static: {
       directory: path.join(__dirname, 'dist'),
     },
